@@ -51,6 +51,17 @@ def extract_form(text):
         return ''
 
 # Функция для обработки правила взаимодействия
+import unicodedata 
+import html 
+import nltk 
+from nltk.tokenize import sent_tokenize, word_tokenize 
+from nltk.stem import PorterStemmer 
+import re 
+
+
+
+
+
 def extract_interaction_rules(text, drug_names_file): 
     # Нормализация кодировки 
     text = unicodedata.normalize('NFKC', html.unescape(text)) 
@@ -72,15 +83,14 @@ def extract_interaction_rules(text, drug_names_file):
         stemmed_tokens = [stemmer.stem(word) for word in tokens] 
         normalized_sentence = ' '.join(stemmed_tokens) 
          
-        if "применени" in normalized_sentence: 
-            for drug_name in drug_names: 
+        
+        for drug_name in drug_names: 
                 if drug_name in normalized_sentence: 
                     interaction_rules.append(sentence + ".") 
                     previous_interaction = sentence 
                     break 
         else: 
             for word in stemmed_tokens: 
-                if word.endswith("ет"): 
                     for drug_name in drug_names: 
                         if drug_name in normalized_sentence: 
                             if previous_interaction is not None: 
@@ -106,20 +116,6 @@ keywords_file = "/content/slovar.txt"  # Файл с ключевыми слов
 
 result = extract_interaction_rules(sentences[0], keywords_file)
 print(result)
-
-def extract_keywords_from_sentences(sentences, keywords_file):
-    extracted_keywords = []
-    
-    with open(keywords_file, 'r', encoding='utf-8') as file:
-        keywords = [line.strip().lower() for line in file]
-    
-    for sentence in sentences:
-        lower_sentence = sentence.lower()
-        for keyword in keywords:
-            if keyword in lower_sentence:
-                extracted_keywords.append(keyword)
-    
-    return extracted_keywords
 
 
 
