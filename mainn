@@ -72,15 +72,15 @@ def extract_interaction_rules(text, drug_names_file):
         stemmed_tokens = [stemmer.stem(word) for word in tokens] 
         normalized_sentence = ' '.join(stemmed_tokens) 
          
-        #if "применени" in normalized_sentence: 
-        for drug_name in drug_names: 
+        if "применени" in normalized_sentence: 
+            for drug_name in drug_names: 
                 if drug_name in normalized_sentence: 
                     interaction_rules.append(sentence + ".") 
                     previous_interaction = sentence 
                     break 
         else: 
             for word in stemmed_tokens: 
-                #if word.endswith("ет"): 
+                if word.endswith("ет"): 
                     for drug_name in drug_names: 
                         if drug_name in normalized_sentence: 
                             if previous_interaction is not None: 
@@ -96,14 +96,16 @@ def extract_interaction_rules(text, drug_names_file):
                 previous_interaction = None 
  
     if not interaction_rules: 
-        return " " 
+        return [""] 
     else: 
         return interaction_rules
-# Пример использования
-text = "Пролонгирует действие Адапромин, усиливает эффекты противосудорожных средств, предотвращает побочные явления фенобарбитала, карбамазепина, нейролептиков. Эффект Пантогама актив усиливается при сочетании с глицином, этидроновой кислотой. При применении Пантогама следует учитывать его взаимодействие с другими лекарственными препаратами."
-drug = '/content/slovar.txt'
-interaction_rules = extract_interaction_rules(text,drug)
-#print(interaction_rules)
+
+sentences = ["Совместный прием активированного угля снижает эффективность препарата.Противопоказано сочетание с антиаритмическими лекарственными препаратами IA класса (хинидин, гидрохинидин, дизопирамид, прокаинамид) -Прием с препаратом Абемациклиб запрещен.Препарат усугубляет действие антиаритмических лекарственных препаратов IA класса (в т.ч. хинидин, гидрохинидин, дизопирамид, прокаинамид) .Совместный прием с препаратом Активированный уголь снижает эффективность. В таких случаях дозу препарата надо увеличить."]
+
+keywords_file = "/content/slovar.txt"  # Файл с ключевыми словами построчно
+
+result = extract_interaction_rules(sentences[0], keywords_file)
+print(result)
 
 def extract_keywords_from_sentences(sentences, keywords_file):
     extracted_keywords = []
