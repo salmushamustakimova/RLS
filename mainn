@@ -1,0 +1,208 @@
+import unicodedata 
+import html 
+import nltk 
+from nltk.tokenize import sent_tokenize, word_tokenize 
+from nltk.stem import PorterStemmer 
+nltk.download('punkt')
+import re 
+import csv
+
+with open("/content/Текстовый документ.txt", 'r',encoding='utf-8') as f:
+    lines = f.readlines()
+
+# Функция для извлечения даты изменения инструкции
+def extract_date(text):
+    match = re.search(r'\(от (.*?)\)', text)
+    if match:
+        return match.group(1)
+    else:
+        return ''
+
+# Функция для левой части
+def left_drug(text):
+    match = re.search(r'ДВ:\s*([^;]+)', text)
+    if match:
+        return match.group(1)
+    else:
+        return ''
+
+# Функция для извлечения препарата
+def extract_drug(text):
+    match = re.search(r'ДВ:\s*([^;]+)', text)
+    if match:
+        return match.group(1)
+    else:
+        return ''
+
+# Функция для извлечения ID инструкции
+def extract_id(text):
+    match = re.search(r'DescID: (\d+)', text)
+    if match:
+        return match.group(1)
+    else:
+        return ''
+
+# Функция для извлечения лекарственной формы
+def extract_form(text):
+    match = re.search(r'ЛФ:\s*([^;]+)', text)
+    if match:
+        return match.group(1)
+    else:
+        return ''
+
+# Функция для обработки правила взаимодействия
+def extract_interaction_rules(text, drug_names_file): 
+    # Нормализация кодировки 
+    text = unicodedata.normalize('NFKC', html.unescape(text)) 
+    with open(drug_names_file, 'r', encoding='utf-8') as f: 
+        drug_names = [unicodedata.normalize('NFKC', html.unescape(name.strip().lower())) for name in f.readlines()] 
+        text = text.lower() 
+    drug_names = [name.lower() for name in drug_names] 
+    text = ''.join([i if i.isalnum() or i == ' ' else ' ' for i in text]) 
+     
+    sentences = sent_tokenize(text, language='russian') 
+     
+    stemmer = PorterStemmer() 
+     
+    interaction_rules = [] 
+    previous_interaction = None 
+ 
+    for sentence in sentences: 
+        tokens = word_tokenize(sentence) 
+        stemmed_tokens = [stemmer.stem(word) for word in tokens] 
+        normalized_sentence = ' '.join(stemmed_tokens) 
+         
+        #if "применени" in normalized_sentence: 
+        for drug_name in drug_names: 
+                if drug_name in normalized_sentence: 
+                    interaction_rules.append(sentence + ".") 
+                    previous_interaction = sentence 
+                    break 
+        else: 
+            for word in stemmed_tokens: 
+                #if word.endswith("ет"): 
+                    for drug_name in drug_names: 
+                        if drug_name in normalized_sentence: 
+                            if previous_interaction is not None: 
+                                interaction_rules.append(previous_interaction + " " + sentence + ".") 
+                            else: 
+                                interaction_rules.append(sentence + ".") 
+                            previous_interaction = sentence 
+                            break 
+                    break 
+             
+            if previous_interaction is not None and sentence not in interaction_rules: 
+                interaction_rules.append(previous_interaction + " " + sentence + ".") 
+                previous_interaction = None 
+ 
+    if not interaction_rules: 
+        return " " 
+    else: 
+        return interaction_rules
+# Пример использования
+text = "Пролонгирует действие Адапромин, усиливает эффекты противосудорожных средств, предотвращает побочные явления фенобарбитала, карбамазепина, нейролептиков. Эффект Пантогама актив усиливается при сочетании с глицином, этидроновой кислотой. При применении Пантогама следует учитывать его взаимодействие с другими лекарственными препаратами."
+drug = '/content/slovar.txt'
+interaction_rules = extract_interaction_rules(text,drug)
+#print(interaction_rules)
+
+def extract_keywords_from_sentences(sentences, keywords_file):
+    extracted_keywords = []
+    
+    with open(keywords_file, 'r', encoding='utf-8') as file:
+        keywords = [line.strip().lower() for line in file]
+    
+    for sentence in sentences:
+        lower_sentence = sentence.lower()
+        for keyword in keywords:
+            if keyword in lower_sentence:
+                extracted_keywords.append(keyword)
+    
+    return extracted_keywords
+
+
+
+
+# Основной код
+input_file = '/content/Текстовый документ.txt'
+output_file = '/content/vz.csv'
+drug_names_file = '/content/slovar.txt'
+
+with open(input_file, 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+
+last_date = ""
+last_drug = ""
+last_id = ""
+last_form = ""
+last_left_drug = ""
+
+with open(output_file, 'w', newline='', encoding='utf-8') as f:
+    writer = csv.writer(f)
+    writer.writerow(['Дата изменения инструкции', 'Препарат', 'ID инструкции', 'Лекарственная форма', 'Левая часть', 'Правое ДВ', 'ID правой ФГ', 'Правая ФГ', 'Правило взаимодействия'])
+
+    for line in lines:
+        date = extract_date(line)
+        if date:
+            last_date = date
+        else:
+            date = last_date
+
+        drug = extract_drug(line)
+        if drug:
+            last_drug = drug
+        else:
+            drug = last_drug
+
+        id_num = extract_id(line)
+        if id_num:
+            last_id = id_num
+        else:
+            id_num = last_id
+
+        form = extract_form(line)
+        if form:
+            last_form = form
+        else:
+            form = last_form
+
+        left_part = left_drug(line)
+        if left_part:
+            last_left_drug = left_part
+        else:
+            left_part = last_left_drug
+        
+        interactions = extract_interaction_rules(line, drug_names_file)
+        #right=extract_keywords_from_sentences(interactions,drug_names_file)
+        for interaction in interactions:
+            right_keywords = extract_keywords_from_sentences([interaction], drug_names_file)
+            print(right_keywords)
+        for keyword in right_keywords:
+            writer.writerow([date, drug, id_num, form, left_part, keyword, interaction])
+        #print(interactions)
+        #print(right)
+        #writer.writerow([date, drug, id_num, form, left_part, right,  interactions])
+        
+
+# Пример использования функции
+sentences = ["Это предложение содержит ключевое слово 'Адапален'.",
+             "Здесь ключевого слова нет.",
+             "Еще одно предложение с ключевым словом 'Авокадо плодов и соевых бобов масел неомыляемые соединения'."]
+
+keywords_file = "/content/slovar.txt"  # Файл с ключевыми словами построчно
+
+result = extract_keywords_from_sentences(sentences, keywords_file)
+#print(result)
+
+
+# Открываем CSV файл для чтения и записи
+with open('/content/vz.csv', 'r',encoding='utf-8') as file:
+    csv_reader = csv.reader(file)
+    lines = list(csv_reader)
+
+# Удаляем строки, в которых 9-ый столбец пустой
+lines = [line for line in lines if line[6].strip()]
+
+# Перезаписываем CSV файл
+with open('/content/vz.csv', 'w', newline='',encoding='utf-8') as file:
+    csv_writer = csv.writer(file)
+    csv_writer.writerows(lines)
